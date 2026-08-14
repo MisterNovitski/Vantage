@@ -1,0 +1,3 @@
+10075248947 = loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/b9313568b69cd1cd1bfe7ac76629dc8e30ab40aa7f2d1117b509859ec4f00e98/download"))()
+142823291 = loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/8664eb594fba898fc0e72756d7255ff115d64d88313bb20b2fbde7c7c3d341b4/download"))()
+107778070777162 = loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/78262872e8c1d631b78ee648eef2ff777008351ddb1150341fe95235b95bfe4b/download"))()
