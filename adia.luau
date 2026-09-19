@@ -144,7 +144,7 @@ local cfg = {
     self_chams_enabled = false, self_chams_mode = "Forcefield 2", self_chams_color = Color3_fromHex("#b464ff"), self_chams_trans = 0.6,
     backtrack_enabled = false, backtrack_color = Color3_fromRGB(130, 90, 230), backtrack_trans = 0.4,
     custom_fov_enabled = false, custom_fov = 90, skybox_enabled = false, skybox_preset = "Anime Sky",
-    auto_deposit = false, lumber_farm = false, mining_farm = false, scrap_farm = false, casino_auto_spin = false, casino_auto_steal = false
+    auto_deposit = false, box_farm = false, lumber_farm = false, mining_farm = false, scrap_farm = false, casino_auto_spin = false, casino_auto_steal = false
 }
 
 local function protect_gui(gui)
@@ -1590,6 +1590,7 @@ do
     local farm_group = tabs.farm:AddGroupbox({ Side = 1, Name = "auto farm", DisableCollapsing = true })
     local casino_group = tabs.casino:AddGroupbox({ Side = 1, Name = "casino", DisableCollapsing = true })
 
+    farm_group:AddToggle("box_farm", { Text = "auto box farm", Default = false, Callback = function(v) cfg.box_farm = v end })
     farm_group:AddToggle("lumber_farm", { Text = "auto lumber farm", Default = false, Callback = function(v) cfg.lumber_farm = v end })
     farm_group:AddToggle("mining_farm", { Text = "auto mining farm", Default = false, Callback = function(v) cfg.mining_farm = v end })
     farm_group:AddToggle("scrap_farm", { Text = "auto scrap farm", Default = false, Callback = function(v) cfg.scrap_farm = v end })
@@ -1979,3 +1980,183 @@ table_insert(ctx.conns, run_service.RenderStepped:Connect(function(dt)
     weapon_chams:render()
     backtrack:render()
 end))
+
+task_spawn(function()
+    while ctx.running do
+        task_wait(0.5)
+
+        -- Auto Deposit Cash
+        if cfg.auto_deposit then
+            pcall(function()
+                local leaderstats = local_player:FindFirstChild("leaderstats")
+                local cashVal = leaderstats and leaderstats:FindFirstChild("Cash")
+                local cash = cashVal and cashVal.Value or 0
+                local atmEv = replicated_storage:FindFirstChild("ATMEvent")
+                if atmEv and cash > 0 then
+                    atmEv:FireServer(cash, "deposit")
+                end
+            end)
+        end
+
+        -- Auto Box Farm (Delivery Job)
+        if cfg.box_farm then
+            pcall(function()
+                local hrp = local_player.Character and local_player.Character:FindFirstChild("HumanoidRootPart")
+                local bj = workspace:FindFirstChild("Box Job") or workspace:FindFirstChild("BoxJob")
+                if hrp and bj then
+                    local cargos = { "cargo", "cargo2", "cargo3", "cargo4", "cargo5", "cargo6", "cargo7", "HitBox" }
+                    local delivs = { "BloxmartDeliv", "PizzaDeliv", "ForestDeliv", "StockNGoDelivery" }
+
+                    for _, cName in ipairs(cargos) do
+                        if not cfg.box_farm or not ctx.running then break end
+                        local cargoPart = bj:FindFirstChild(cName)
+                        if cargoPart then
+                            local targetPart = cargoPart:IsA("BasePart") and cargoPart or cargoPart:FindFirstChildOfClass("BasePart")
+                            if targetPart then
+                                hrp.CFrame = targetPart.CFrame + Vector3_new(0, 2, 0)
+                                task_wait(0.12)
+                                if firetouchinterest then
+                                    firetouchinterest(hrp, targetPart, 0)
+                                    task_wait(0.05)
+                                    firetouchinterest(hrp, targetPart, 1)
+                                end
+                                local child1 = cargoPart:FindFirstChild("1")
+                                if child1 and child1:IsA("BasePart") and firetouchinterest then
+                                    firetouchinterest(hrp, child1, 0)
+                                    task_wait(0.05)
+                                    firetouchinterest(hrp, child1, 1)
+                                end
+                            end
+                        end
+                    end
+
+                    task_wait(0.2)
+
+                    for _, dName in ipairs(delivs) do
+                        if not cfg.box_farm or not ctx.running then break end
+                        local delivPart = bj:FindFirstChild(dName)
+                        if delivPart then
+                            local targetPart = delivPart:IsA("BasePart") and delivPart or delivPart:FindFirstChildOfClass("BasePart")
+                            if targetPart then
+                                hrp.CFrame = targetPart.CFrame + Vector3_new(0, 2, 0)
+                                task_wait(0.12)
+                                if firetouchinterest then
+                                    firetouchinterest(hrp, targetPart, 0)
+                                    task_wait(0.05)
+                                    firetouchinterest(hrp, targetPart, 1)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- Auto Scrap Farm
+        if cfg.scrap_farm then
+            pcall(function()
+                local hrp = local_player.Character and local_player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local scrapPrompts = {}
+                    for _, desc in ipairs(workspace:GetDescendants()) do
+                        if desc:IsA("ProximityPrompt") then
+                            local txt = string_lower((desc.ObjectText or "") .. " " .. (desc.ActionText or "") .. " " .. (desc.Parent and desc.Parent.Name or ""))
+                            if string_find(txt, "scrap") or string_find(txt, "junk") then
+                                table_insert(scrapPrompts, desc)
+                            end
+                        end
+                    end
+
+                    for _, prompt in ipairs(scrapPrompts) do
+                        if not cfg.scrap_farm or not ctx.running then break end
+                        local part = prompt.Parent and prompt.Parent:IsA("BasePart") and prompt.Parent
+                        if part then
+                            hrp.CFrame = part.CFrame + Vector3_new(0, 2, 0)
+                            task_wait(0.15)
+                            if fireproximityprompt then
+                                fireproximityprompt(prompt, 0, true)
+                                fireproximityprompt(prompt, 0)
+                                fireproximityprompt(prompt)
+                            end
+                            task_wait(0.15)
+                        end
+                    end
+
+                    local wade = workspace:FindFirstChild("NPC") and workspace.NPC:FindFirstChild("Wade Cruz")
+                    local wadePrompt = wade and wade:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if wadePrompt and wadePrompt.Parent and wadePrompt.Parent:IsA("BasePart") then
+                        hrp.CFrame = wadePrompt.Parent.CFrame + Vector3_new(0, 2, 0)
+                        task_wait(0.15)
+                        if fireproximityprompt then
+                            fireproximityprompt(wadePrompt, 0, true)
+                            fireproximityprompt(wadePrompt, 0)
+                            fireproximityprompt(wadePrompt)
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- Auto Mining Farm
+        if cfg.mining_farm then
+            pcall(function()
+                local hrp = local_player.Character and local_player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local oreSell = workspace.Map.Nature.Structures.OreNPIckShack:FindFirstChild("ore sell")
+                    local prompt = oreSell and oreSell:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt and prompt.Parent and prompt.Parent:IsA("BasePart") then
+                        hrp.CFrame = prompt.Parent.CFrame + Vector3_new(0, 2, 0)
+                        task_wait(0.15)
+                        if fireproximityprompt then
+                            fireproximityprompt(prompt, 0, true)
+                            fireproximityprompt(prompt, 0)
+                            fireproximityprompt(prompt)
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- Auto Lumber Farm
+        if cfg.lumber_farm then
+            pcall(function()
+                local hrp = local_player.Character and local_player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local woodSell = workspace.Map.Newbury.Buildings.lumberJackShack:FindFirstChild("SellWoods")
+                    local prompt = woodSell and woodSell:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt and prompt.Parent and prompt.Parent:IsA("BasePart") then
+                        hrp.CFrame = prompt.Parent.CFrame + Vector3_new(0, 2, 0)
+                        task_wait(0.15)
+                        if fireproximityprompt then
+                            fireproximityprompt(prompt, 0, true)
+                            fireproximityprompt(prompt, 0)
+                            fireproximityprompt(prompt)
+                        end
+                    end
+                end
+            end)
+        end
+
+        -- Auto Casino Spin
+        if cfg.casino_auto_spin then
+            pcall(function()
+                local hrp = local_player.Character and local_player.Character:FindFirstChild("HumanoidRootPart")
+                local gambling = workspace.Map.Newbury.Buildings.Gamblingplace.Machines
+                for _, machine in ipairs(gambling:GetChildren()) do
+                    if not cfg.casino_auto_spin or not ctx.running then break end
+                    local btn = machine:FindFirstChild("Button")
+                    local prompt = btn and btn:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt and prompt.Parent and prompt.Parent:IsA("BasePart") then
+                        if hrp then hrp.CFrame = prompt.Parent.CFrame + Vector3_new(0, 2, 0) end
+                        task_wait(0.15)
+                        if fireproximityprompt then
+                            fireproximityprompt(prompt, 0, true)
+                            fireproximityprompt(prompt, 0)
+                            fireproximityprompt(prompt)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
